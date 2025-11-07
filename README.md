@@ -290,6 +290,7 @@ POKEMON_TCG_API_KEY=your_api_key_here
 
 - Modified the search functionality to search for Pokémon by name only. The search query now uses `name:"*$query*"` to perform a fuzzy search on the card name.
 - The application now exclusively fetches Pokémon cards by default, filtering out other card types like "Trainer" or "Energy". This is achieved by adding `supertype:pokemon` to all API queries.
+- The application fetches data through the following Cloudflare Worker URL: [https://late-glitter-4565.brunolobo-14.workers.dev/](https://late-glitter-4565.brunolobo-14.workers.dev/)
 
 ## 📜 License
 
@@ -301,13 +302,41 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [Flutter](https://flutter.dev/) for the amazing cross-platform framework
 - [Pokémon Company](https://www.pokemon.com/) for the trading card game
 
-## 📞 Support
 
-For support, questions, or feature requests:
-- Open an issue on GitHub
-- Check the [Flutter documentation](https://docs.flutter.dev/)
-- Review the [Pokémon TCG API documentation](https://docs.pokemontcg.io/)
-
----
 
 **Happy coding! 🚀**
+
+# Pokémon TCG Browser
+
+This project is a Flutter application that allows users to browse Pokémon cards fetched from the Pokémon TCG API. The application uses a Cloudflare Worker to handle CORS issues and fetch data efficiently.
+
+
+
+## Features
+
+- Browse Pokémon cards
+- Search for specific cards
+- View card details
+
+## Setup
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/esBrunoL/pokemon.git
+   ```
+2. Navigate to the project directory:
+   ```bash
+   cd pokemon
+   ```
+3. Install dependencies:
+   ```bash
+   flutter pub get
+   ```
+4. Run the application:
+   ```bash
+   flutter run
+   ```
+
+## Hosting
+
+The project is hosted on GitHub Pages. Ensure the repository is set up correctly for deployment.
