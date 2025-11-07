@@ -1,0 +1,61 @@
+{
+    "dart.flutterSdkPath": null,
+    "dart.lineLength": 100,
+    "dart.enableSdkFormatter": true,
+    "dart.insertArgumentPlaceholders": false,
+    "dart.showTodos": true,
+    "dart.runPubGetOnPubspecChanges": "prompt",
+    "dart.warnWhenEditingFilesOutsideWorkspace": true,
+    "dart.allowAnalytics": false,
+    "dart.checkForSdkUpdates": true,
+    "dart.showDartDeveloperLogs": true,
+    
+    "[dart]": {
+        "editor.formatOnSave": true,
+        "editor.formatOnType": true,
+        "editor.rulers": [100],
+        "editor.selectionHighlight": false,
+        "editor.suggest.snippetsPreventQuickSuggestions": false,
+        "editor.suggestSelection": "first",
+        "editor.tabCompletion": "onlySnippets",
+        "editor.wordBasedSuggestions": "off"
+    },
+    
+    "files.associations": {
+        "*.dart": "dart",
+        "pubspec.yaml": "yaml",
+        "analysis_options.yaml": "yaml"
+    },
+    
+    "files.exclude": {
+        "**/.dart_tool": true,
+        "**/build": true,
+        "**/.gradle": true,
+        "**/android/.gradle": true,
+        "**/android/app/debug": true,
+        "**/android/app/profile": true,
+        "**/android/app/release": true,
+        "**/ios/Flutter/flutter_assets": true,
+        "**/ios/Flutter/Generated.xcconfig": true,
+        "**/ios/Runner/GeneratedPluginRegistrant.*": true,
+        "**/.flutter-plugins": true,
+        "**/.flutter-plugins-dependencies": true,
+        "**/.packages": true,
+        "**/pubspec.lock": true
+    },
+    
+    "search.exclude": {
+        "**/build": true,
+        "**/.dart_tool": true,
+        "**/.gradle": true,
+        "**/android/.gradle": true,
+        "**/ios/Flutter": true,
+        "**/.flutter-plugins*": true,
+        "**/.packages": true,
+        "**/pubspec.lock": true
+    },
+    
+    "emmet.includeLanguages": {
+        "dart": "html"
+    }
+}
