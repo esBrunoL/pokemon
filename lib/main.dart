@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'models/pokemon_card.dart';
 import 'screens/card_list_screen.dart';
 import 'screens/battle_screen.dart';
 import 'screens/my_team_screen.dart';
@@ -97,6 +98,18 @@ class PokedexApp extends StatelessWidget {
         home: const PokedexFrameWrapper(
           child: CardListScreen(),
         ),
+        onGenerateRoute: (settings) {
+          if (settings.name == '/battle') {
+            final card = settings.arguments as PokemonCard?;
+            if (card != null) {
+              return MaterialPageRoute(
+                builder: (context) => BattleScreen(),
+                settings: settings,
+              );
+            }
+          }
+          return null;
+        },
       ),
     );
   }
@@ -117,21 +130,19 @@ class PokedexFrameWrapper extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.red, // Red background for border effect
-      body: SafeArea(
-        child: Container(
-          margin: EdgeInsets.all(borderWidth), // 2% red border on all sides
-          decoration: const BoxDecoration(
-            color: Colors.black, // Black content area
-            borderRadius: BorderRadius.all(Radius.circular(20)), // Round internal edges
-          ),
-          child: Column(
-            children: [
-              // Menu Bar with flexible height
-              const PokedexMenuBar(),
-              // Main Content
-              Expanded(child: child),
-            ],
-          ),
+      body: Container(
+        margin: EdgeInsets.all(borderWidth), // 2% red border on all sides
+        decoration: const BoxDecoration(
+          color: Colors.black, // Black content area
+          borderRadius: BorderRadius.all(Radius.circular(20)), // Round internal edges
+        ),
+        child: Column(
+          children: [
+            // Menu Bar with flexible height
+            const PokedexMenuBar(),
+            // Main Content
+            Expanded(child: child),
+          ],
         ),
       ),
     );

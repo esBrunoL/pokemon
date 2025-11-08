@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/api_models.dart';
 import '../models/pokemon_card.dart';
+import '../models/type_effectiveness.dart';
 
 class PokemonApiService {
   PokemonApiService({http.Client? httpClient}) : _httpClient = httpClient ?? http.Client();
@@ -13,6 +14,7 @@ class PokemonApiService {
   final String _baseUrl = 'https://pokeapi.co/api/v2';
   final http.Client _httpClient;
   final Map<String, List<PokemonCard>> _cache = {};
+  final Map<String, TypeEffectiveness> _typeEffectivenessCache = {};
   static const int _defaultPageSize = 20;
   static const int _maxRetries = 3;
   static const Duration _retryDelay = Duration(seconds: 2);
@@ -396,12 +398,104 @@ class PokemonApiService {
     return [];
   }
 
+  /// Get type effectiveness data for a specific type
+  Future<TypeEffectiveness?> getTypeEffectiveness(String typeName) async {
+    final lowerTypeName = typeName.toLowerCase();
+
+    // Check memory cache
+    if (_typeEffectivenessCache.containsKey(lowerTypeName)) {
+      return _typeEffectivenessCache[lowerTypeName];
+    }
+
+    // Check local storage cache
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedJson = prefs.getString('type_$lowerTypeName');
+      if (cachedJson != null) {
+        final typeData = TypeEffectiveness.fromJson(json.decode(cachedJson));
+        _typeEffectivenessCache[lowerTypeName] = typeData;
+        return typeData;
+      }
+    } catch (e) {
+      debugPrint('Error loading cached type data: $e');
+    }
+
+    // Fetch from API
+    try {
+      await _respectRateLimit();
+      final url = Uri.parse('$_baseUrl/type/$lowerTypeName');
+      final response = await _makeRequestWithRetry(url);
+
+      final jsonData = json.decode(response.body) as Map<String, dynamic>;
+      final typeData = TypeEffectiveness.fromJson(jsonData);
+
+      // Cache in memory and local storage
+      _typeEffectivenessCache[lowerTypeName] = typeData;
+
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('type_$lowerTypeName', json.encode(jsonData));
+      } catch (e) {
+        debugPrint('Error caching type data: $e');
+      }
+
+      return typeData;
+    } catch (e) {
+      debugPrint('Error fetching type effectiveness: $e');
+      return null;
+    }
+  }
+
+  /// Get all type effectiveness data for multiple types
+  /// Used for initializing the type effectiveness calculator
+  Future<Map<String, TypeEffectiveness>> getAllTypeEffectiveness() async {
+    const allTypes = [
+      'normal',
+      'fire',
+      'water',
+      'electric',
+      'grass',
+      'ice',
+      'fighting',
+      'poison',
+      'ground',
+      'flying',
+      'psychic',
+      'bug',
+      'rock',
+      'ghost',
+      'dragon',
+      'dark',
+      'steel',
+      'fairy'
+    ];
+
+    final Map<String, TypeEffectiveness> typeData = {};
+
+    for (final typeName in allTypes) {
+      final effectiveness = await getTypeEffectiveness(typeName);
+      if (effectiveness != null) {
+        typeData[typeName] = effectiveness;
+      }
+    }
+
+    return typeData;
+  }
+
+  /// Create a type effectiveness calculator with cached data
+  Future<TypeEffectivenessCalculator> getTypeEffectivenessCalculator() async {
+    final typeData = await getAllTypeEffectiveness();
+    return TypeEffectivenessCalculator(typeData);
+  }
+
   /// Clear all caches
   Future<void> clearCache() async {
     _cache.clear();
+    _typeEffectivenessCache.clear();
     try {
       final prefs = await SharedPreferences.getInstance();
-      final keys = prefs.getKeys().where((key) => key.startsWith('cache_'));
+      final keys =
+          prefs.getKeys().where((key) => key.startsWith('cache_') || key.startsWith('type_'));
       for (final key in keys) {
         await prefs.remove(key);
       }

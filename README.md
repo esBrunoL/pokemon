@@ -122,16 +122,76 @@ A Flutter cross-platform mobile application that allows users to browse, search,
 - **Enhanced Detail Screen**: Added team management buttons:
   - **Add to Team Button**: Green button below stats, shows team capacity (e.g., "3/6")
   - **Smart States**: Button disabled when Pokemon already in team or team is full
-  - **Enter Tournament Button**: Orange button for future tournament functionality
+  - **Try outs! Button**: Orange button for battle system functionality
   - **Position**: Both buttons placed above "Tap outside to close" instruction
   - **User Feedback**: SnackBar notifications confirm successful adds/removes
 
+### **Advanced Battle System with Type Effectiveness** ⚔️
+- **Try Outs Battle Mechanics**: Revolutionary battle system with sophisticated damage calculations:
+  - **Attack vs HP Logic**: Winner determined by comparing effective attack against opponent's HP
+    - Player wins if: `player.attack > opponent.HP` AND `player.HP > opponent.attack`
+    - Opponent wins if: `opponent.attack > player.HP` AND `opponent.HP > player.attack`
+    - Draw if both can defeat each other
+  - **Type Effectiveness System**: Integrated real Pokemon type matchup data from PokeAPI
+    - **Super Effective**: +50% attack bonus (1.5x multiplier) when type advantage
+    - **Not Very Effective**: -30% attack reduction (0.7x multiplier) when type disadvantage
+    - **No Effect**: Attack becomes 0 when type immunity applies
+  - **Visual Feedback**: Color-coded effectiveness messages
+    - Green background: "It's super effective!"
+    - Red background: "It's not very effective..."
+    - Gray background: "It doesn't affect the opponent!"
+
+- **Type Effectiveness Data Integration**:
+  - **PokeAPI Type Endpoint**: Fetches comprehensive type relationships from `/type/{type-name}`
+  - **Damage Relations**: Complete type matchup data including:
+    - `double_damage_to`: Types this Pokemon is super effective against
+    - `half_damage_to`: Types this Pokemon is not very effective against
+    - `no_damage_to`: Types this Pokemon has no effect on
+    - `double_damage_from`: Weaknesses (types super effective against this Pokemon)
+    - `half_damage_from`: Resistances (types not very effective against this Pokemon)
+    - `no_damage_from`: Immunities (types that have no effect on this Pokemon)
+  - **Smart Caching**: Type data cached in both memory and SharedPreferences
+  - **Offline Support**: Type effectiveness works offline after initial load
+  - **All 18 Types**: Fire, Water, Grass, Electric, Psychic, Ice, Fighting, Poison, Ground, Flying, Bug, Rock, Ghost, Dragon, Dark, Steel, Fairy, Normal
+
+- **Battle Screen Features**:
+  - **Player vs Random Opponent**: Selected Pokemon faces random opponent from all 1008+ Pokemon
+  - **Interactive Pokemon Cards**: Tap any Pokemon during battle to view full details
+  - **Real-Time Stats Display**: Shows effective attack values with type multipliers applied
+  - **Battle Results Banner**: Displays winner with detailed breakdown:
+    - Winner name and icon (trophy for win, X for loss, scales for draw)
+    - Both Pokemon's effective attack vs opponent HP
+    - Type effectiveness messages for both combatants
+  - **Smart Battle Flow**:
+    - **Win**: "Keep going!" button - keep player, get new opponent
+    - **Loss**: "Try [opponent name]" button - defeated Pokemon becomes new player
+    - **Draw**: "Try again!" button - rematch with new random opponent
+  - **Frame & Menu Integration**: Battle screen uses same 2% red border and top menu bar as main app
+
+- **TypeEffectiveness Calculator**:
+  - **Damage Multiplier Engine**: Sophisticated calculation system
+  - **Multi-Type Support**: Handles Pokemon with dual types correctly
+  - **Compound Multipliers**: Stacks type advantages (e.g., Fire vs Grass/Bug = 1.5x × 1.5x = 2.25x)
+  - **Effectiveness Messages**: Dynamic battle commentary based on type matchups
+  - **Zero Damage Detection**: Properly handles immunity scenarios
+
+- **Battle UI Enhancements**:
+  - **ON TRIAL Label**: Player Pokemon highlighted with blue border
+  - **OPPONENT Label**: Random opponent with appropriate border coloring
+  - **VS Indicator**: Central red circle with white border between combatants
+  - **Color-Coded Borders**: Green for winner, red for loser, orange for draw
+  - **Loading States**: Circular progress indicators while fetching opponent
+  - **Error Handling**: Clear error messages if opponent fetch fails
+
 ### **Code Quality & Architecture**
 - **Provider Pattern Enhancement**: Added TeamProvider to existing Provider structure
-- **Persistent Storage**: Implemented JSON serialization for team data persistence
+- **Type Effectiveness Models**: New `TypeEffectiveness` and `TypeEffectivenessCalculator` classes
+- **API Service Extensions**: Added type data fetching methods with caching
+- **Persistent Storage**: Implemented JSON serialization for team data and type effectiveness persistence
 - **Error Handling**: Comprehensive try-catch blocks with user-friendly error messages
 - **Type Safety**: Full type checking with null safety throughout new features
 - **Confirmation Dialogs**: User confirmation required before removing Pokemon from team
+- **Async Battle Logic**: Non-blocking type effectiveness loading with fallback to basic calculations
 - **Accessibility**: Semantic labels for all new buttons and interactive elements
 
 ---

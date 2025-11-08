@@ -327,19 +327,17 @@ class _CardDetailDialogState extends State<CardDetailDialog> {
 
                 const SizedBox(height: 12),
 
-                // Enter Tournament Button
+                // Try outs Button
                 SizedBox(
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      // Tournament functionality to be implemented later
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Tournament feature coming soon!'),
-                          backgroundColor: Colors.orange,
-                          duration: Duration(seconds: 2),
-                        ),
+                      // Navigate to battle screen for try outs
+                      Navigator.of(context).pop(); // Close the detail dialog first
+                      Navigator.of(context).pushNamed(
+                        '/battle',
+                        arguments: widget.card,
                       );
                     },
                     style: ElevatedButton.styleFrom(
@@ -348,9 +346,9 @@ class _CardDetailDialogState extends State<CardDetailDialog> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       elevation: 3,
                     ),
-                    icon: const Icon(Icons.emoji_events),
+                    icon: const Icon(Icons.sports_martial_arts),
                     label: const Text(
-                      'Enter a Tournament',
+                      'Try outs!',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ),

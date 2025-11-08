@@ -7,6 +7,59 @@ class CardGridItem extends StatelessWidget {
   final PokemonCard card;
   final VoidCallback onTap;
 
+  /// Get color for Pokemon type
+  Color _getTypeColor(String type) {
+    switch (type.toLowerCase()) {
+      case 'fire':
+        return Colors.orange;
+      case 'water':
+        return Colors.blue;
+      case 'grass':
+        return Colors.green;
+      case 'electric':
+        return Colors.yellow;
+      case 'psychic':
+        return Colors.purple;
+      case 'ice':
+        return Colors.cyan;
+      case 'dragon':
+        return Colors.indigo;
+      case 'dark':
+        return Colors.brown;
+      case 'fairy':
+        return Colors.pink;
+      case 'normal':
+        return Colors.grey;
+      case 'fighting':
+        return Colors.red.shade900;
+      case 'flying':
+        return Colors.lightBlue;
+      case 'poison':
+        return Colors.deepPurple;
+      case 'ground':
+        return Colors.brown.shade700;
+      case 'rock':
+        return Colors.grey.shade700;
+      case 'bug':
+        return Colors.lightGreen;
+      case 'ghost':
+        return Colors.deepPurple.shade900;
+      case 'steel':
+        return Colors.blueGrey;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  /// Get attack stat value
+  int get _attackStat {
+    final attackStat = card.stats.firstWhere(
+      (stat) => stat.name == 'attack',
+      orElse: () => const PokemonStat(name: 'attack', baseStat: 0, effort: 0),
+    );
+    return attackStat.baseStat;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -56,66 +109,140 @@ class CardGridItem extends StatelessWidget {
 
               // Card information overlay at the bottom
               Positioned(
-                left: 8,
-                right: 8,
-                bottom: 8,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Pokemon name
-                    Text(
-                      card.name,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        shadows: [
-                          Shadow(
-                            offset: Offset(1, 1),
-                            blurRadius: 2,
-                            color: Colors.black,
-                          ),
-                        ],
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      semanticsLabel: 'Pokémon name: ${card.name}',
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(10),
+                      bottomRight: Radius.circular(10),
                     ),
-
-                    const SizedBox(height: 2),
-
-                    Row(
-                      children: [
-                        // Pokédex number
-                        if (card.pokedexNumber != null) ...[
-                          Text(
-                            '#${card.pokedexNumber}',
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 11,
-                              shadows: [
-                                Shadow(
-                                  offset: Offset(1, 1),
-                                  blurRadius: 2,
-                                  color: Colors.black,
-                                ),
-                              ],
-                            ),
-                            semanticsLabel: 'Pokédex number: ${card.pokedexNumber}',
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Pokédex number
+                      if (card.pokedexNumber != null)
+                        Text(
+                          '#${card.pokedexNumber}',
+                          style: TextStyle(
+                            color: Colors.grey.shade400,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            shadows: const [
+                              Shadow(
+                                offset: Offset(1, 1),
+                                blurRadius: 3,
+                                color: Colors.black,
+                              ),
+                            ],
                           ),
-                          const Spacer(),
-                        ],
+                          semanticsLabel: 'Pokédex number: ${card.pokedexNumber}',
+                        ),
+                      const SizedBox(height: 4),
 
-                        // Types
-                        if (card.types.isNotEmpty) ...[
-                          Flexible(
-                            child: Text(
-                              card.types.map((type) => type.toUpperCase()).join(', '),
+                      // Pokemon name
+                      Text(
+                        card.name.toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          shadows: [
+                            Shadow(
+                              offset: Offset(1, 1),
+                              blurRadius: 3,
+                              color: Colors.black,
+                            ),
+                          ],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        semanticsLabel: 'Pokémon name: ${card.name}',
+                      ),
+
+                      const SizedBox(height: 6),
+
+                      // Types
+                      if (card.types.isNotEmpty)
+                        Wrap(
+                          spacing: 4,
+                          alignment: WrapAlignment.center,
+                          children: card.types.map((type) {
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _getTypeColor(type),
+                                borderRadius: BorderRadius.circular(8),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Colors.black54,
+                                    blurRadius: 4,
+                                    offset: Offset(1, 1),
+                                  ),
+                                ],
+                              ),
+                              child: Text(
+                                type.toUpperCase(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  shadows: [
+                                    Shadow(
+                                      offset: Offset(1, 1),
+                                      blurRadius: 2,
+                                      color: Colors.black,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+
+                      const SizedBox(height: 8),
+
+                      // Attack stat at bottom with type color
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              card.types.isNotEmpty ? _getTypeColor(card.types.first) : Colors.grey,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black54,
+                              blurRadius: 4,
+                              offset: Offset(1, 1),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.flash_on,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'ATK: $_attackStat',
                               style: const TextStyle(
-                                color: Colors.blue,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
                                 shadows: [
                                   Shadow(
                                     offset: Offset(1, 1),
@@ -124,38 +251,12 @@ class CardGridItem extends StatelessWidget {
                                   ),
                                 ],
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              semanticsLabel: 'Pokemon types: ${card.types.join(', ')}',
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-
-                    // Primary ability
-                    if (card.abilities.isNotEmpty) ...[
-                      const SizedBox(height: 1),
-                      Text(
-                        card.abilities.first.replaceAll('-', ' ').toUpperCase(),
-                        style: const TextStyle(
-                          color: Colors.green,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
-                          shadows: [
-                            Shadow(
-                              offset: Offset(1, 1),
-                              blurRadius: 2,
-                              color: Colors.black,
                             ),
                           ],
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        semanticsLabel: 'Primary ability: ${card.abilities.first}',
                       ),
                     ],
-                  ],
+                  ),
                 ),
               ),
             ],
