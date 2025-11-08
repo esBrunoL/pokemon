@@ -2,23 +2,15 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/api_models.dart';
 import '../models/pokemon_card.dart';
-import 'mock_data.dart';
 
-class PokemonTcgApiService {
-  PokemonTcgApiService({http.Client? httpClient}) : _httpClient = httpClient ?? http.Client() {
-    _apiKey = dotenv.env['POKEMON_TCG_API_KEY'] ?? '';
-    if (_apiKey.isEmpty) {
-      throw Exception('Pokemon TCG API key not found. Please check your .env file.');
-    }
-  }
+class PokemonApiService {
+  PokemonApiService({http.Client? httpClient}) : _httpClient = httpClient ?? http.Client();
 
-  final String _baseUrl = 'https://late-glitter-4565.brunolobo-14.workers.dev';
-  late final String _apiKey;
+  final String _baseUrl = 'https://pokeapi.co/api/v2';
   final http.Client _httpClient;
   final Map<String, List<PokemonCard>> _cache = {};
   static const int _defaultPageSize = 20;
@@ -27,20 +19,19 @@ class PokemonTcgApiService {
 
   // Rate limiting
   DateTime? _lastRequestTime;
-  static const Duration _minRequestInterval = Duration(milliseconds: 50);
+  static const Duration _minRequestInterval = Duration(milliseconds: 100);
 
   /// Headers for API requests
   Map<String, String> get _headers => {
-        'X-Api-Key': _apiKey,
         'Content-Type': 'application/json',
       };
 
-  /// Get cards with pagination and optional search
+  /// Get Pokemon with pagination and optional search
   Future<PaginatedResponse<PokemonCard>> getCards({
     int page = 1,
     int pageSize = _defaultPageSize,
     String? searchQuery,
-    String orderBy = 'nationalPokedexNumbers',
+    String orderBy = 'id',
   }) async {
     await _respectRateLimit();
 
@@ -59,11 +50,16 @@ class PokemonTcgApiService {
     }
 
     try {
-      final url = _buildUrl('cards', page, pageSize, searchQuery, orderBy);
-      final response = await _makeRequestWithRetry(url);
+      List<PokemonCard> cards = [];
 
-      final jsonData = json.decode(response.body) as Map<String, dynamic>;
-      final cards = _parseCardsFromResponse(jsonData);
+      if (searchQuery != null && searchQuery.isNotEmpty) {
+        // For search, we need to load a larger dataset and filter locally
+        // since PokeAPI doesn't support fuzzy search
+        cards = await _performSearchWithLocalFiltering(searchQuery, pageSize);
+      } else {
+        // Get Pokemon list with pagination
+        cards = await _getPokemonList(page, pageSize);
+      }
 
       // Cache the results
       _cache[cacheKey] = cards;
@@ -73,13 +69,14 @@ class PokemonTcgApiService {
         data: cards,
         page: page,
         pageSize: pageSize,
-        totalCount: jsonData['totalCount'] ?? cards.length,
+        totalCount: cards.length,
         hasMore: cards.length == pageSize,
       );
     } catch (e) {
       // Try to load from local cache if available
       final localCards = await _loadCacheFromLocal(cacheKey);
       if (localCards.isNotEmpty) {
+        debugPrint('API request failed, using cached data: $e');
         return PaginatedResponse<PokemonCard>(
           data: localCards,
           page: page,
@@ -89,77 +86,213 @@ class PokemonTcgApiService {
         );
       }
 
-      // If API fails (e.g., CORS issues in web), use mock data
-      debugPrint('API request failed, using mock data: $e');
-      final mockCards = _getMockCards(searchQuery);
-
-      // Cache mock data
-      _cache[cacheKey] = mockCards;
-
-      return PaginatedResponse<PokemonCard>(
-        data: mockCards,
-        page: page,
-        pageSize: pageSize,
-        totalCount: mockCards.length,
-        hasMore: false,
-      );
+      // If API fails and no cache available, rethrow the error
+      debugPrint('API request failed with no cache available: $e');
+      rethrow;
     }
   }
 
-  /// Search cards by name or national Pokedex number
+  /// Get a list of Pokemon with pagination
+  Future<List<PokemonCard>> _getPokemonList(int page, int pageSize) async {
+    final offset = (page - 1) * pageSize;
+    final url = Uri.parse('$_baseUrl/pokemon?limit=$pageSize&offset=$offset');
+    final response = await _makeRequestWithRetry(url);
+
+    final jsonData = json.decode(response.body) as Map<String, dynamic>;
+    final results = jsonData['results'] as List<dynamic>? ?? [];
+
+    // Fetch detailed data for each Pokemon
+    List<PokemonCard> cards = [];
+    for (final result in results) {
+      final pokemonUrl = result['url'] as String;
+      final pokemonId = pokemonUrl.split('/').where((s) => s.isNotEmpty).last;
+      final pokemon = await getPokemonById(pokemonId);
+      if (pokemon != null) {
+        cards.add(pokemon);
+      }
+    }
+
+    return cards;
+  }
+
+  /// Perform search with local filtering for partial matches
+  Future<List<PokemonCard>> _performSearchWithLocalFiltering(String query, int limit) async {
+    // Use smart name-based filtering from the start to avoid 404 errors
+    // Get matching Pokemon names first, then fetch only the matching ones
+    final matchingPokemon = await _findMatchingPokemonNames(query, limit);
+
+    // Fetch detailed data for matching Pokemon
+    final List<PokemonCard> results = [];
+    for (final pokemonName in matchingPokemon) {
+      final pokemon = await getPokemonById(pokemonName);
+      if (pokemon != null) {
+        results.add(pokemon);
+        if (results.length >= limit) break; // Limit results
+      }
+    }
+
+    return results;
+  }
+
+  /// Find Pokemon names that match the search query without fetching full data
+  Future<List<String>> _findMatchingPokemonNames(String query, int limit) async {
+    final lowerQuery = query.toLowerCase();
+
+    // Check if we have a cached list of all Pokemon names
+    const cacheKey = 'pokemon_names_list';
+    if (_cache.containsKey(cacheKey)) {
+      final cachedNames = _cache[cacheKey]?.map((card) => card.name).toList() ?? [];
+      return cachedNames
+          .where((name) => name.toLowerCase().contains(lowerQuery))
+          .take(limit * 2) // Get a few more to account for failed fetches
+          .toList();
+    }
+
+    // If not cached, get a reasonable list (first 1008 Pokemon as of 2024)
+    try {
+      final url = Uri.parse('$_baseUrl/pokemon?limit=1008&offset=0');
+      final response = await _makeRequestWithRetry(url);
+      final jsonData = json.decode(response.body) as Map<String, dynamic>;
+      final results = jsonData['results'] as List<dynamic>? ?? [];
+
+      // Extract names and filter
+      final allNames = results.map((item) => item['name'] as String).toList();
+      final matchingNames = allNames
+          .where((name) => name.toLowerCase().contains(lowerQuery))
+          .take(limit * 2)
+          .toList();
+
+      return matchingNames;
+    } catch (e) {
+      debugPrint('Failed to get Pokemon names list: $e');
+      // Fallback to original method with smaller dataset
+      final cards = await _getPokemonList(1, 151);
+      return cards
+          .where((card) => _matchesSearchQuery(card, query))
+          .map((card) => card.name)
+          .take(limit)
+          .toList();
+    }
+  }
+
+  /// Check if a Pokemon card matches the search query
+  bool _matchesSearchQuery(PokemonCard card, String query) {
+    final lowerQuery = query.toLowerCase();
+
+    // Check if it's a number (Pokédex number search)
+    final number = int.tryParse(query);
+    if (number != null) {
+      return card.pokedexNumber == number;
+    }
+
+    // Text search in name and types
+    return card.name.toLowerCase().contains(lowerQuery) ||
+        card.types.any((type) => type.toLowerCase().contains(lowerQuery)) ||
+        card.abilities.any((ability) => ability.toLowerCase().contains(lowerQuery));
+  }
+
+  /// Search cards by name or ID
   Future<List<PokemonCard>> searchCards(String query) async {
     if (query.isEmpty) return [];
 
-    // Check if query is a number (Pokedex search)
-    final number = int.tryParse(query);
-    final searchQuery = number != null ? 'nationalPokedexNumbers:$number' : 'name:*$query*';
-
-    final response = await getCards(
-      searchQuery: searchQuery,
-      pageSize: 100, // Smaller page size for search
-    );
-
-    return response.data;
+    // Use the optimized search method instead of direct API call
+    return await _performSearchWithLocalFiltering(query, 20);
   }
 
-  /// Get a specific card by ID
-  Future<PokemonCard?> getCardById(String cardId) async {
+  /// Get a specific Pokemon by ID or name
+  Future<PokemonCard?> getPokemonById(String identifier) async {
     await _respectRateLimit();
 
     try {
-      final url = Uri.parse('$_baseUrl/cards/$cardId');
+      final url = Uri.parse('$_baseUrl/pokemon/$identifier');
       final response = await _makeRequestWithRetry(url);
 
       final jsonData = json.decode(response.body) as Map<String, dynamic>;
-      final cardData = jsonData['data'] as Map<String, dynamic>?;
-
-      if (cardData != null) {
-        return PokemonCard.fromJson(cardData);
-      }
-      return null;
+      return PokemonCard.fromJson(jsonData);
     } catch (e) {
-      throw ApiError(
-        message: 'Failed to fetch card with ID: $cardId',
-        details: e.toString(),
-      );
+      debugPrint('Failed to fetch Pokemon with identifier: $identifier, error: $e');
+      return null;
     }
   }
 
-  /// Build URL with query parameters
-  Uri _buildUrl(String endpoint, int page, int pageSize, String? searchQuery, String orderBy) {
-    final queryParameters = {
-      'page': page.toString(),
-      'pageSize': pageSize.toString(),
-      'orderBy': orderBy,
-      'select':
-          'id,name,images,rarity,set,evolvesFrom,evolvesTo,nationalPokedexNumbers,supertype,subtypes',
-    };
+  /// Get a specific card by ID (alias for getPokemonById for compatibility)
+  Future<PokemonCard?> getCardById(String cardId) async {
+    return await getPokemonById(cardId);
+  }
 
-    if (searchQuery != null && searchQuery.isNotEmpty) {
-      queryParameters['q'] = searchQuery;
+  /// Get random Pokemon cards for battle functionality
+  Future<List<PokemonCard>> getRandomCards({int count = 2}) async {
+    try {
+      final cards = <PokemonCard>[];
+      final usedIds = <int>{};
+
+      // There are over 1000 Pokemon, but let's use the first 898 (original + expansions)
+      // to ensure we get valid Pokemon with proper data
+      while (cards.length < count && usedIds.length < 50) {
+        // Safety limit
+        final randomId = (cards.length * 137 + DateTime.now().millisecondsSinceEpoch) % 898 + 1;
+
+        if (usedIds.contains(randomId)) continue;
+        usedIds.add(randomId);
+
+        try {
+          final pokemon = await getPokemonById(randomId.toString());
+
+          // Only add Pokemon with valid HP and image
+          if (pokemon != null && pokemon.hpValue > 0 && pokemon.imageUrl.isNotEmpty) {
+            cards.add(pokemon);
+          }
+        } catch (e) {
+          debugPrint('Error fetching random Pokemon $randomId: $e');
+          continue;
+        }
+      }
+
+      if (cards.length < count) {
+        // Fallback: get some well-known Pokemon if random selection fails
+        return await _getFallbackPokemon(count: count);
+      }
+
+      return cards;
+    } catch (e) {
+      throw Exception('Error fetching random Pokemon: $e');
+    }
+  }
+
+  /// Fallback method to get popular/well-known Pokemon
+  Future<List<PokemonCard>> _getFallbackPokemon({int count = 2}) async {
+    final popularPokemonIds = [
+      1,
+      4,
+      7,
+      25,
+      39,
+      52,
+      104,
+      113,
+      131,
+      143,
+      150,
+      151
+    ]; // Bulbasaur, Charmander, Squirtle, Pikachu, etc.
+    final cards = <PokemonCard>[];
+
+    // Shuffle the list and take the required count
+    popularPokemonIds.shuffle();
+    final selectedIds = popularPokemonIds.take(count).toList();
+
+    for (final id in selectedIds) {
+      try {
+        final pokemon = await getPokemonById(id.toString());
+        if (pokemon != null) {
+          cards.add(pokemon);
+        }
+      } catch (e) {
+        debugPrint('Error fetching fallback Pokemon $id: $e');
+      }
     }
 
-    return Uri.parse('$_baseUrl/$endpoint').replace(queryParameters: queryParameters);
+    return cards;
   }
 
   /// Make an HTTP request with retry logic
@@ -179,6 +312,12 @@ class PokemonTcgApiService {
           // Rate limit exceeded, wait longer
           await Future.delayed(_retryDelay * (attempt + 2));
           continue;
+        } else if (response.statusCode == 404) {
+          throw ApiError(
+            message: 'Pokemon not found',
+            statusCode: response.statusCode,
+            details: response.body,
+          );
         } else {
           throw ApiError(
             message: 'API request failed',
@@ -214,12 +353,6 @@ class PokemonTcgApiService {
     throw const ApiError(message: 'Failed to complete request after retries');
   }
 
-  /// Parse cards from API response
-  List<PokemonCard> _parseCardsFromResponse(Map<String, dynamic> jsonData) {
-    final dataList = jsonData['data'] as List<dynamic>? ?? [];
-    return dataList.map((item) => PokemonCard.fromJson(item as Map<String, dynamic>)).toList();
-  }
-
   /// Respect rate limiting
   Future<void> _respectRateLimit() async {
     if (_lastRequestTime != null) {
@@ -234,7 +367,7 @@ class PokemonTcgApiService {
 
   /// Build cache key
   String _buildCacheKey(int page, int pageSize, String? searchQuery, String orderBy) {
-    return 'cards_${page}_${pageSize}_${searchQuery ?? ''}_$orderBy';
+    return 'pokemon_${page}_${pageSize}_${searchQuery ?? ''}_$orderBy';
   }
 
   /// Save cache to local storage
@@ -277,57 +410,26 @@ class PokemonTcgApiService {
     }
   }
 
-  /// Get mock cards for demonstration when API is not available
-  List<PokemonCard> _getMockCards(String? searchQuery) {
-    final mockData = mockApiResponse['data'] as List<dynamic>;
-    var cards = mockData.map((item) => PokemonCard.fromJson(item as Map<String, dynamic>)).toList();
-
-    // Sort by national pokedex numbers
-    cards.sort((a, b) {
-      final aNum = a.nationalPokedexNumbers.isNotEmpty ? a.nationalPokedexNumbers.first : 999;
-      final bNum = b.nationalPokedexNumbers.isNotEmpty ? b.nationalPokedexNumbers.first : 999;
-      return aNum.compareTo(bNum);
-    });
-
-    // Apply search filter if provided
-    if (searchQuery != null && searchQuery.isNotEmpty) {
-      if (searchQuery.contains('nationalPokedexNumbers:')) {
-        final numberStr = searchQuery.split(':')[1];
-        final number = int.tryParse(numberStr);
-        if (number != null) {
-          cards = cards.where((card) => card.nationalPokedexNumbers.contains(number)).toList();
-        }
-      } else if (searchQuery.contains('name:')) {
-        final nameQuery = searchQuery.split(':')[1].replaceAll('*', '').toLowerCase();
-        cards = cards.where((card) => card.name.toLowerCase().contains(nameQuery)).toList();
-      }
-    }
-
-    return cards;
-  }
-
   /// Dispose resources
   void dispose() {
     _httpClient.close();
   }
 }
 
+// Legacy compatibility class - remove the duplicate ApiService class
 class ApiService {
-  final String baseUrl = 'https://late-glitter-4565.brunolobo-14.workers.dev';
+  final String baseUrl = 'https://pokeapi.co/api/v2';
 
   Future<List<dynamic>> fetchPokemonCards({int page = 1, int pageSize = 20}) async {
-    final url = Uri.parse('$baseUrl?page=$page&pageSize=$pageSize&orderBy=nationalPokedexNumbers');
-    print('Fetching URL: $url'); // Debugging line to check the URL
+    final offset = (page - 1) * pageSize;
+    final url = Uri.parse('$baseUrl/pokemon?limit=$pageSize&offset=$offset');
     final response = await http.get(url);
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return data['data'];
+      final data = json.decode(response.body);
+      return data['results'];
     } else {
-      throw Exception('Failed to fetch Pokémon cards: ${response.statusCode}');
+      throw Exception('Failed to fetch Pokémon: ${response.statusCode}');
     }
   }
 }
-
-// Add logic to handle CORS issues for web deployment
-// For GitHub Pages compatibility, consider using a serverless proxy solution like Cloudflare Workers or Netlify Functions.

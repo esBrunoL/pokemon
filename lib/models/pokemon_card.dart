@@ -3,90 +3,148 @@ class PokemonCard {
     required this.id,
     required this.name,
     required this.imageUrl,
-    this.setName,
-    this.rarity,
-    this.evolvesFrom,
-    this.evolvesTo = const [],
-    this.nationalPokedexNumbers = const [],
-    this.supertype,
-    this.subtypes,
+    this.height,
+    this.weight,
+    this.baseExperience,
+    this.order,
+    this.types = const [],
+    this.abilities = const [],
+    this.stats = const [],
+    this.pokedexNumber,
   });
+
   factory PokemonCard.fromJson(Map<String, dynamic> json) {
     return PokemonCard(
-      id: json['id'] ?? '',
+      id: json['id']?.toString() ?? '',
       name: json['name'] ?? '',
-      imageUrl: json['images']?['large'] ?? json['images']?['small'] ?? '',
-      setName: json['set']?['name'],
-      rarity: json['rarity'],
-      evolvesFrom: json['evolvesFrom'],
-      evolvesTo: _parseStringList(json['evolvesTo']),
-      nationalPokedexNumbers: _parseIntList(json['nationalPokedexNumbers']),
-      supertype: json['supertype'],
-      subtypes: json['subtypes']?.join(', '),
+      imageUrl: json['sprites']?['other']?['official-artwork']?['front_default'] ??
+          json['sprites']?['other']?['home']?['front_default'] ??
+          json['sprites']?['front_default'] ??
+          '',
+      height: json['height'],
+      weight: json['weight'],
+      baseExperience: json['base_experience'],
+      order: json['order'],
+      types: _parseTypes(json['types']),
+      abilities: _parseAbilities(json['abilities']),
+      stats: _parseStats(json['stats']),
+      pokedexNumber: json['id'],
     );
   }
+
   final String id;
   final String name;
   final String imageUrl;
-  final String? setName;
-  final String? rarity;
-  final String? evolvesFrom;
-  final List<String> evolvesTo;
-  final List<int> nationalPokedexNumbers;
-  final String? supertype;
-  final String? subtypes;
+  final int? height;
+  final int? weight;
+  final int? baseExperience;
+  final int? order;
+  final List<String> types;
+  final List<String> abilities;
+  final List<PokemonStat> stats;
+  final int? pokedexNumber;
 
   /// Convert PokemonCard to JSON for caching
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      'id': int.tryParse(id) ?? 0,
       'name': name,
-      'images': {
-        'large': imageUrl,
+      'sprites': {
+        'front_default': imageUrl,
+        'other': {
+          'official-artwork': {
+            'front_default': imageUrl,
+          }
+        }
       },
-      'set': setName != null ? {'name': setName} : null,
-      'rarity': rarity,
-      'evolvesFrom': evolvesFrom,
-      'evolvesTo': evolvesTo,
-      'nationalPokedexNumbers': nationalPokedexNumbers,
-      'supertype': supertype,
-      'subtypes': subtypes,
+      'height': height,
+      'weight': weight,
+      'base_experience': baseExperience,
+      'order': order,
+      'types': types
+          .map((type) => {
+                'type': {'name': type}
+              })
+          .toList(),
+      'abilities': abilities
+          .map((ability) => {
+                'ability': {'name': ability}
+              })
+          .toList(),
+      'stats': stats.map((stat) => stat.toJson()).toList(),
     };
   }
 
-  /// Helper method to safely parse string lists from JSON
-  static List<String> _parseStringList(dynamic value) {
+  /// Helper method to parse types from JSON
+  static List<String> _parseTypes(dynamic value) {
     if (value == null) return [];
     if (value is List) {
       return value
-          .map((e) => e?.toString() ?? '')
+          .map((e) => e?['type']?['name']?.toString() ?? '')
           .where((s) => s.isNotEmpty)
           .toList();
     }
     return [];
   }
 
-  /// Helper method to safely parse integer lists from JSON
-  static List<int> _parseIntList(dynamic value) {
+  /// Helper method to parse abilities from JSON
+  static List<String> _parseAbilities(dynamic value) {
     if (value == null) return [];
     if (value is List) {
       return value
-          .map((e) => e is int ? e : int.tryParse(e?.toString() ?? ''))
-          .where((n) => n != null)
-          .cast<int>()
+          .map((e) => e?['ability']?['name']?.toString() ?? '')
+          .where((s) => s.isNotEmpty)
           .toList();
     }
     return [];
   }
 
-  /// Get the primary national Pokédex number (first one if multiple)
-  int? get primaryPokedexNumber {
-    return nationalPokedexNumbers.isNotEmpty
-        ? nationalPokedexNumbers.first
-        : null;
+  /// Helper method to parse stats from JSON
+  static List<PokemonStat> _parseStats(dynamic value) {
+    if (value == null) return [];
+    if (value is List) {
+      return value
+          .map((e) {
+            if (e is Map<String, dynamic>) {
+              return PokemonStat.fromJson(e);
+            }
+            return null;
+          })
+          .where((s) => s != null)
+          .cast<PokemonStat>()
+          .toList();
+    }
+    return [];
   }
 
-  /// Check if the card matches a search query
+  /// Get the primary type (first type if multiple)
+  String? get primaryType {
+    return types.isNotEmpty ? types.first : null;
+  }
+
+  /// Get all type names as a formatted string
+  String get typesString {
+    return types.join(', ');
+  }
+
+  /// Get the Pokedex number
+  int? get primaryPokedexNumber {
+    return pokedexNumber;
+  }
+
+  /// Get HP stat for battle functionality
+  int get hp {
+    final hpStat = stats.firstWhere(
+      (stat) => stat.name == 'hp',
+      orElse: () => const PokemonStat(name: 'hp', baseStat: 1, effort: 0),
+    );
+    return hpStat.baseStat;
+  }
+
+  /// Get HP value (alias for hp getter for compatibility)
+  int get hpValue => hp;
+
+  /// Check if the pokemon matches a search query
   bool matchesSearch(String query) {
     if (query.isEmpty) return true;
 
@@ -95,18 +153,18 @@ class PokemonCard {
     // Check if it's a number (Pokédex number search)
     final number = int.tryParse(query);
     if (number != null) {
-      return nationalPokedexNumbers.contains(number);
+      return pokedexNumber == number;
     }
 
-    // Text search in name, set name, and rarity
+    // Text search in name and types
     return name.toLowerCase().contains(lowerQuery) ||
-        (setName?.toLowerCase().contains(lowerQuery) ?? false) ||
-        (rarity?.toLowerCase().contains(lowerQuery) ?? false);
+        types.any((type) => type.toLowerCase().contains(lowerQuery)) ||
+        abilities.any((ability) => ability.toLowerCase().contains(lowerQuery));
   }
 
   @override
   String toString() {
-    return 'PokemonCard{id: $id, name: $name, setName: $setName, rarity: $rarity}';
+    return 'PokemonCard{id: $id, name: $name, types: $typesString, pokedexNumber: $pokedexNumber}';
   }
 
   @override
@@ -117,4 +175,38 @@ class PokemonCard {
 
   @override
   int get hashCode => id.hashCode;
+}
+
+/// Pokemon stat model
+class PokemonStat {
+  const PokemonStat({
+    required this.name,
+    required this.baseStat,
+    required this.effort,
+  });
+
+  factory PokemonStat.fromJson(Map<String, dynamic> json) {
+    return PokemonStat(
+      name: json['stat']?['name'] ?? '',
+      baseStat: json['base_stat'] ?? 0,
+      effort: json['effort'] ?? 0,
+    );
+  }
+
+  final String name;
+  final int baseStat;
+  final int effort;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'stat': {'name': name},
+      'base_stat': baseStat,
+      'effort': effort,
+    };
+  }
+
+  @override
+  String toString() {
+    return '$name: $baseStat (EV: $effort)';
+  }
 }

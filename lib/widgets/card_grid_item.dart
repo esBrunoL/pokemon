@@ -19,30 +19,49 @@ class CardGridItem extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-              color: Colors.black, borderRadius: BorderRadius.circular(12)),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            color: Colors.black,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Stack(
             children: [
-              // Card image (as button)
-              Expanded(
-                flex: 3,
-                child: Center(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: _buildCardImage(),
+              // Background card image covering the entire container
+              Positioned.fill(
+                child: ClipRRect(
+                  borderRadius:
+                      BorderRadius.circular(10), // Slightly less than container to show border
+                  child: _buildCardImage(),
+                ),
+              ),
+
+              // Gradient overlay for text readability
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.7),
+                        Colors.black.withOpacity(0.9),
+                      ],
+                      stops: const [0.0, 0.5, 0.8, 1.0],
+                    ),
                   ),
                 ),
               ),
 
-              const SizedBox(height: 8),
-
-              // Card information
-              Expanded(
-                flex: 1,
+              // Card information overlay at the bottom
+              Positioned(
+                left: 8,
+                right: 8,
+                bottom: 8,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     // Pokemon name
                     Text(
@@ -51,49 +70,89 @@ class CardGridItem extends StatelessWidget {
                         color: Colors.white,
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
+                        shadows: [
+                          Shadow(
+                            offset: Offset(1, 1),
+                            blurRadius: 2,
+                            color: Colors.black,
+                          ),
+                        ],
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       semanticsLabel: 'Pokémon name: ${card.name}',
                     ),
 
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
 
-                    // Set name
-                    if (card.setName != null) ...[
-                      Text(
-                        'Set: ${card.setName}',
-                        style:
-                            const TextStyle(color: Colors.grey, fontSize: 11),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        semanticsLabel: 'Card set: ${card.setName}',
-                      ),
-                    ],
+                    Row(
+                      children: [
+                        // Pokédex number
+                        if (card.pokedexNumber != null) ...[
+                          Text(
+                            '#${card.pokedexNumber}',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 11,
+                              shadows: [
+                                Shadow(
+                                  offset: Offset(1, 1),
+                                  blurRadius: 2,
+                                  color: Colors.black,
+                                ),
+                              ],
+                            ),
+                            semanticsLabel: 'Pokédex number: ${card.pokedexNumber}',
+                          ),
+                          const Spacer(),
+                        ],
 
-                    // Rarity
-                    if (card.rarity != null) ...[
+                        // Types
+                        if (card.types.isNotEmpty) ...[
+                          Flexible(
+                            child: Text(
+                              card.types.map((type) => type.toUpperCase()).join(', '),
+                              style: const TextStyle(
+                                color: Colors.blue,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                shadows: [
+                                  Shadow(
+                                    offset: Offset(1, 1),
+                                    blurRadius: 2,
+                                    color: Colors.black,
+                                  ),
+                                ],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              semanticsLabel: 'Pokemon types: ${card.types.join(', ')}',
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+
+                    // Primary ability
+                    if (card.abilities.isNotEmpty) ...[
+                      const SizedBox(height: 1),
                       Text(
-                        card.rarity!,
+                        card.abilities.first.replaceAll('-', ' ').toUpperCase(),
                         style: const TextStyle(
-                          color: Colors.red,
-                          fontSize: 11,
+                          color: Colors.green,
+                          fontSize: 10,
                           fontWeight: FontWeight.w500,
+                          shadows: [
+                            Shadow(
+                              offset: Offset(1, 1),
+                              blurRadius: 2,
+                              color: Colors.black,
+                            ),
+                          ],
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        semanticsLabel: 'Card rarity: ${card.rarity}',
-                      ),
-                    ],
-
-                    // National Pokédex number
-                    if (card.nationalPokedexNumbers.isNotEmpty) ...[
-                      Text(
-                        '#${card.nationalPokedexNumbers.first}',
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 11),
-                        semanticsLabel:
-                            'Pokédex number: ${card.nationalPokedexNumbers.first}',
+                        semanticsLabel: 'Primary ability: ${card.abilities.first}',
                       ),
                     ],
                   ],
@@ -110,6 +169,7 @@ class CardGridItem extends StatelessWidget {
     if (card.imageUrl.isEmpty) {
       return Container(
         width: double.infinity,
+        height: double.infinity,
         decoration: BoxDecoration(
           color: Colors.grey[800],
           borderRadius: BorderRadius.circular(8),
@@ -121,8 +181,7 @@ class CardGridItem extends StatelessWidget {
             children: [
               Icon(Icons.image_not_supported, color: Colors.grey, size: 32),
               SizedBox(height: 4),
-              Text('No Image',
-                  style: TextStyle(color: Colors.grey, fontSize: 10)),
+              Text('No Image', style: TextStyle(color: Colors.grey, fontSize: 10)),
             ],
           ),
         ),
@@ -131,14 +190,12 @@ class CardGridItem extends StatelessWidget {
 
     return CachedNetworkImage(
       imageUrl: card.imageUrl,
-      fit: BoxFit.cover,
+      fit: BoxFit.cover, // Cover the entire container
       width: double.infinity,
+      height: double.infinity,
       placeholder: (context, url) => Container(
-        decoration: BoxDecoration(
-            color: Colors.grey[800], borderRadius: BorderRadius.circular(8)),
-        child: const Center(
-            child:
-                CircularProgressIndicator(color: Colors.red, strokeWidth: 2)),
+        decoration: BoxDecoration(color: Colors.grey[800], borderRadius: BorderRadius.circular(8)),
+        child: const Center(child: CircularProgressIndicator(color: Colors.red, strokeWidth: 2)),
       ),
       errorWidget: (context, url, error) => Container(
         decoration: BoxDecoration(
@@ -152,8 +209,7 @@ class CardGridItem extends StatelessWidget {
             children: [
               Icon(Icons.error_outline, color: Colors.red, size: 32),
               SizedBox(height: 4),
-              Text('Load Error',
-                  style: TextStyle(color: Colors.red, fontSize: 10)),
+              Text('Load Error', style: TextStyle(color: Colors.red, fontSize: 10)),
             ],
           ),
         ),

@@ -1,5 +1,5 @@
-name: pokemon_tcg_browser
-description: A Flutter app for browsing Pokémon TCG cards with responsive design and search functionality.
+name: pokemon_browser
+description: A Flutter app for browsing Pokémon with responsive design and search functionality.
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -10,9 +10,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  
-  # Environment variables for API key security
-  flutter_dotenv: ^5.1.0
 
   # HTTP and API
   http: ^1.1.0
@@ -41,10 +38,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  
-  # Environment file for API key
-  assets:
-    - .env
 
 flutter_intl:
   enabled: true

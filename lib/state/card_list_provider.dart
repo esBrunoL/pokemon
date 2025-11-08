@@ -6,7 +6,7 @@ import '../services/api_service.dart';
 
 class CardListProvider extends ChangeNotifier {
   CardListProvider(this._apiService);
-  final PokemonTcgApiService _apiService;
+  final PokemonApiService _apiService;
 
   // State variables
   List<PokemonCard> _cards = [];
@@ -31,6 +31,7 @@ class CardListProvider extends ChangeNotifier {
   bool get isLoadingMore => _loadingState == LoadingState.loadingMore;
   bool get hasError => _error != null;
   bool get isEmpty => _cards.isEmpty;
+  bool get isSearching => _searchQuery.isNotEmpty;
 
   /// Initialize the card list
   Future<void> initialize() async {
@@ -52,7 +53,7 @@ class CardListProvider extends ChangeNotifier {
       final page = isLoadingMore ? _currentPage + 1 : 1;
       final response = await _apiService.getCards(
         page: page,
-        searchQuery: _buildSearchQuery(_searchQuery),
+        searchQuery: _searchQuery.isEmpty ? null : _searchQuery,
       );
 
       if (isLoadingMore) {
@@ -143,14 +144,6 @@ class CardListProvider extends ChangeNotifier {
     } else {
       await loadCards(); // Load with search query
     }
-  }
-
-  /// Build search query for API
-  String _buildSearchQuery(String query) {
-    if (query.isEmpty) {
-      return 'supertype:pokemon';
-    }
-    return 'name:"*$query*" supertype:pokemon';
   }
 
   /// Set loading state and notify listeners

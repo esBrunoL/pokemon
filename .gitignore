@@ -22,6 +22,7 @@ migrate_working_dir/
 #.vscode/
 
 # Flutter/Dart/Pub related
+.dart_tool/
 **/doc/api/
 **/ios/Flutter/flutter_assets/
 **/ios/Flutter/Flutter.framework/
