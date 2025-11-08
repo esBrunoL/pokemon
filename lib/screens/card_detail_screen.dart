@@ -172,11 +172,7 @@ class _CardDetailDialogState extends State<CardDetailDialog> {
 
         // Pokédex Number
         if (widget.card.pokedexNumber != null) ...[
-          _buildInfoRow(
-            'Pokédex Number',
-            '#${widget.card.pokedexNumber}',
-            Icons.numbers,
-          ),
+          _buildInfoRow('Pokédex Number', '#${widget.card.pokedexNumber}', Icons.numbers),
         ],
 
         // Height and Weight
@@ -197,11 +193,7 @@ class _CardDetailDialogState extends State<CardDetailDialog> {
 
         // Base Experience
         if (widget.card.baseExperience != null) ...[
-          _buildInfoRow(
-            'Base Experience',
-            '${widget.card.baseExperience}',
-            Icons.star_rate,
-          ),
+          _buildInfoRow('Base Experience', '${widget.card.baseExperience}', Icons.star_rate),
         ],
 
         // Types
@@ -218,12 +210,16 @@ class _CardDetailDialogState extends State<CardDetailDialog> {
           _buildInfoRow(
             'Abilities',
             widget.card.abilities
-                .map((ability) => ability
-                    .replaceAll('-', ' ')
-                    .split(' ')
-                    .map((word) =>
-                        word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : word)
-                    .join(' '))
+                .map(
+                  (ability) => ability
+                      .replaceAll('-', ' ')
+                      .split(' ')
+                      .map(
+                        (word) =>
+                            word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : word,
+                      )
+                      .join(' '),
+                )
                 .join(', '),
             Icons.flash_on,
           ),
@@ -250,51 +246,84 @@ class _CardDetailDialogState extends State<CardDetailDialog> {
 
             return Column(
               children: [
-                // Add to Team Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton.icon(
-                    onPressed: isInTeam || (isFull && !isInTeam)
-                        ? null
-                        : () async {
-                            final success = await teamProvider.addToTeam(widget.card);
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    success
-                                        ? '${widget.card.name} added to your team!'
-                                        : 'Failed to add ${widget.card.name} to team',
-                                  ),
-                                  backgroundColor: success ? Colors.green : Colors.red,
-                                  duration: const Duration(seconds: 2),
+                // Add/Remove Team Button
+                if (isInTeam)
+                  // Remove from Team Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        final confirmed = await _showRemoveFromTeamConfirmation(context);
+                        if (confirmed == true) {
+                          final success = await teamProvider.removeFromTeam(widget.card);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  success
+                                      ? '${widget.card.name} removed from team'
+                                      : 'Failed to remove ${widget.card.name}',
                                 ),
-                              );
-                            }
-                          },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isInTeam ? Colors.grey : Colors.green,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                                backgroundColor: success ? Colors.orange : Colors.red,
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red.shade700,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 3,
                       ),
-                      elevation: 3,
+                      icon: const Icon(Icons.remove_circle),
+                      label: const Text(
+                        'Remove from Team',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
                     ),
-                    icon: Icon(isInTeam ? Icons.check_circle : Icons.add_circle),
-                    label: Text(
-                      isInTeam
-                          ? 'Already in Team'
-                          : (isFull
-                              ? 'Team is Full (6/6)'
-                              : 'Add to My Team (${teamProvider.teamSize}/6)'),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                  )
+                else
+                  // Add to Team Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      onPressed: isFull
+                          ? null
+                          : () async {
+                              final success = await teamProvider.addToTeam(widget.card);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      success
+                                          ? '${widget.card.name} added to your team!'
+                                          : 'Failed to add ${widget.card.name} to team',
+                                    ),
+                                    backgroundColor: success ? Colors.green : Colors.red,
+                                    duration: const Duration(seconds: 2),
+                                  ),
+                                );
+                              }
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 3,
+                      ),
+                      icon: const Icon(Icons.add_circle),
+                      label: Text(
+                        isFull
+                            ? 'Team is Full (6/6)'
+                            : 'Add to My Team (${teamProvider.teamSize}/6)',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
-                ),
 
                 const SizedBox(height: 12),
 
@@ -316,18 +345,13 @@ class _CardDetailDialogState extends State<CardDetailDialog> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.orange,
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       elevation: 3,
                     ),
                     icon: const Icon(Icons.emoji_events),
                     label: const Text(
                       'Enter a Tournament',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
@@ -497,6 +521,36 @@ class _CardDetailDialogState extends State<CardDetailDialog> {
           ),
         ],
       ),
+    );
+  }
+
+  Future<bool?> _showRemoveFromTeamConfirmation(BuildContext context) {
+    return showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.grey.shade900,
+          title: const Text('Remove from Team?', style: TextStyle(color: Colors.white)),
+          content: Text(
+            'Are you sure you want to remove ${widget.card.name} from your team?',
+            style: const TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade700,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Remove'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
