@@ -7,7 +7,6 @@ import 'screens/battle_screen.dart';
 import 'services/api_service.dart';
 import 'state/card_list_provider.dart';
 import 'state/team_provider.dart';
-import 'widgets/pokedex_frame_wrapper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -94,17 +93,13 @@ class PokedexApp extends StatelessWidget {
           ),
           iconTheme: const IconThemeData(color: Colors.red),
         ),
-        home: const PokedexFrameWrapper(
-          screenTitle: 'Pokédx',
-          showSearch: true,
-          child: CardListScreen(),
-        ),
+        home: const CardListScreen(),
         onGenerateRoute: (settings) {
           if (settings.name == '/battle') {
             final card = settings.arguments as PokemonCard?;
             if (card != null) {
               return MaterialPageRoute(
-                builder: (context) => BattleScreen(),
+                builder: (context) => const BattleScreen(),
                 settings: settings,
               );
             }
