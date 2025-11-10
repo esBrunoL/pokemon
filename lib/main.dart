@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'models/pokemon_card.dart';
 import 'screens/card_list_screen.dart';
 import 'screens/battle_screen.dart';
+import 'screens/gym_screen.dart';
 import 'screens/my_team_screen.dart';
 import 'services/api_service.dart';
 import 'state/card_list_provider.dart';
@@ -266,6 +267,29 @@ class _PokedexMenuBarState extends State<PokedexMenuBar> {
                     context,
                     MaterialPageRoute(
                       builder: (context) => const BattleScreen(),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            const SizedBox(width: 8),
+
+            // Gym Challenge Button
+            Semantics(
+              label: 'Gym Challenge',
+              child: IconButton(
+                icon: const Icon(
+                  Icons.stadium,
+                  color: Colors.black, // Bold black icons on red background
+                  size: 28, // Make icons more prominent/bold
+                  weight: 700, // Bold weight
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const GymScreen(),
                     ),
                   );
                 },
