@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/pokemon_card.dart';
 import '../services/api_service.dart';
 import '../state/team_provider.dart';
+import '../widgets/pokedex_frame_wrapper.dart';
 
 class GymScreen extends StatefulWidget {
   const GymScreen({super.key});
@@ -23,6 +24,18 @@ class _GymScreenState extends State<GymScreen> {
   bool battleComplete = false;
   int currentOpponentIndex = 0;
   Set<String> defeatedPlayerPokemonIds = {}; // Track defeated player Pokemon
+
+  // Responsive layout state
+  bool _isLeftPanelExpanded = false;
+  bool _isRightPanelExpanded = false;
+  bool _isLeftPanelLocked = false;
+  bool _isRightPanelLocked = false;
+
+  // Layout constants
+  static const double centerContainerWidth = 500.0;
+  static const double sidePanelCollapsedWidth = 60.0;
+  static const double sidePanelExpandedWidth = 200.0;
+  static const double minimumScreenWidth = centerContainerWidth + (sidePanelCollapsedWidth * 2);
 
   @override
   void initState() {
@@ -96,7 +109,8 @@ class _GymScreenState extends State<GymScreen> {
         } else if (opponentAttack > playerAttack) {
           winnerPokemon = currentOpponentPokemon;
         } else {
-          winnerPokemon = Random().nextBool() ? selectedPlayerPokemon : currentOpponentPokemon;
+          // Draw - both Pokemon are considered defeated
+          winnerPokemon = null; // No winner in case of draw
         }
         battleComplete = true;
       });
@@ -104,6 +118,11 @@ class _GymScreenState extends State<GymScreen> {
       // Handle Pokemon defeat
       if (winnerPokemon == currentOpponentPokemon && selectedPlayerPokemon != null) {
         // Player's Pokemon is defeated - mark it as unavailable
+        setState(() {
+          defeatedPlayerPokemonIds.add(selectedPlayerPokemon!.id);
+        });
+      } else if (winnerPokemon == null) {
+        // Draw - both Pokemon are defeated
         setState(() {
           defeatedPlayerPokemonIds.add(selectedPlayerPokemon!.id);
         });
@@ -129,24 +148,12 @@ class _GymScreenState extends State<GymScreen> {
   @override
   Widget build(BuildContext context) {
     final teamProvider = Provider.of<TeamProvider>(context);
-    final playerTeam = teamProvider.team;
     final playerWon = winnerPokemon == selectedPlayerPokemon;
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: const Text(
-          'Gym Challenge',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: Colors.red.shade800,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: Padding(
+    return PokedexFrameWrapper(
+      screenTitle: 'Gym Challenge',
+      showSearch: false,
+      child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
@@ -175,34 +182,46 @@ class _GymScreenState extends State<GymScreen> {
               ),
 
             // Battle result
-            if (battleComplete && winnerPokemon != null)
+            if (battleComplete)
               Container(
                 padding: const EdgeInsets.all(16),
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: playerWon
-                        ? [Colors.green.shade700, Colors.green.shade900]
-                        : [Colors.red.shade700, Colors.red.shade900],
+                    colors: winnerPokemon == null
+                        ? [Colors.orange.shade700, Colors.orange.shade900] // Draw
+                        : playerWon
+                            ? [Colors.green.shade700, Colors.green.shade900] // Player wins
+                            : [Colors.red.shade700, Colors.red.shade900], // Player loses
                   ),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: playerWon ? Colors.green : Colors.red,
+                    color: winnerPokemon == null
+                        ? Colors.orange // Draw
+                        : playerWon
+                            ? Colors.green // Player wins
+                            : Colors.red, // Player loses
                     width: 3,
                   ),
                 ),
                 child: Column(
                   children: [
                     Icon(
-                      playerWon ? Icons.emoji_events : Icons.close,
+                      winnerPokemon == null
+                          ? Icons.handshake // Draw
+                          : playerWon
+                              ? Icons.emoji_events // Player wins
+                              : Icons.close, // Player loses
                       color: Colors.yellow,
                       size: 48,
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      playerWon
-                          ? '${selectedPlayerPokemon!.name.toUpperCase()} WINS!'
-                          : '${selectedPlayerPokemon!.name.toUpperCase()} LOST!',
+                      winnerPokemon == null
+                          ? 'DRAW! BOTH POKÉMON DEFEATED!'
+                          : playerWon
+                              ? '${selectedPlayerPokemon!.name.toUpperCase()} WINS!'
+                              : '${selectedPlayerPokemon!.name.toUpperCase()} LOST!',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 24,
@@ -210,6 +229,18 @@ class _GymScreenState extends State<GymScreen> {
                       ),
                       textAlign: TextAlign.center,
                     ),
+                    if (winnerPokemon == null)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 8.0),
+                        child: Text(
+                          'Equal attack power means both Pokémon are defeated!',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
                     if (playerWon && currentOpponentIndex < opponentTeam.length - 1)
                       const Padding(
                         padding: EdgeInsets.only(top: 8.0),
@@ -225,151 +256,14 @@ class _GymScreenState extends State<GymScreen> {
                 ),
               ),
 
-            // Team grids and battle area
+            // Team grids and battle area - Responsive Layout
             Expanded(
-              child: Row(
-                children: [
-                  // Player team (left side)
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade800,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Text(
-                            'MY TEAM',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Expanded(
-                          child: _buildPlayerTeamGrid(playerTeam),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(width: 16),
-
-                  // Battle area (center)
-                  Expanded(
-                    flex: 3,
-                    child: Column(
-                      children: [
-                        // Battle cards
-                        Expanded(
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: _buildBattlePokemonCard(
-                                  selectedPlayerPokemon,
-                                  'SELECTED',
-                                  isPlayer: true,
-                                  isWinner: winnerPokemon == selectedPlayerPokemon,
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.shade800,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 2),
-                                ),
-                                child: const Text(
-                                  'VS',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: _buildBattlePokemonCard(
-                                  currentOpponentPokemon,
-                                  'OPPONENT ${currentOpponentIndex + 1}/6',
-                                  isPlayer: false,
-                                  isWinner: winnerPokemon == currentOpponentPokemon,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // Battle button
-                        if (selectedPlayerPokemon != null && !battleComplete)
-                          SizedBox(
-                            width: double.infinity,
-                            height: 60,
-                            child: ElevatedButton.icon(
-                              onPressed: _performBattle,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.orange,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                elevation: 5,
-                              ),
-                              icon: const Icon(Icons.flash_on, size: 28),
-                              label: const Text(
-                                'BATTLE!',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(width: 16),
-
-                  // Opponent team (right side)
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.red.shade800,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Text(
-                            'GYM TEAM',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Expanded(
-                          child: _buildOpponentTeamGrid(),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return _buildResponsiveLayout(context, teamProvider, constraints);
+                },
               ),
             ),
-
             if (isLoading)
               const Padding(
                 padding: EdgeInsets.all(20.0),
@@ -764,5 +658,291 @@ class _GymScreenState extends State<GymScreen> {
       default:
         return Colors.grey;
     }
+  }
+
+  // New responsive layout method
+  Widget _buildResponsiveLayout(
+      BuildContext context, TeamProvider teamProvider, BoxConstraints constraints) {
+    final screenWidth = constraints.maxWidth;
+    final isSmallScreen = screenWidth < minimumScreenWidth;
+    final availableWidth = screenWidth - 32; // Account for padding
+
+    // Calculate center container width
+    final centerWidth = isSmallScreen
+        ? availableWidth - (sidePanelCollapsedWidth * 2)
+        : centerContainerWidth.clamp(300.0, availableWidth - (sidePanelCollapsedWidth * 2));
+
+    return Column(
+      children: [
+        // Warning message for small screens
+        if (isSmallScreen) _buildScreenSizeWarning(),
+
+        // Main layout
+        Expanded(
+          child: Row(
+            children: [
+              // Left panel (Player team)
+              _buildSidePanel(
+                isLeft: true,
+                isExpanded: _isLeftPanelExpanded,
+                isLocked: _isLeftPanelLocked,
+                title: 'MY TEAM',
+                color: Colors.blue.shade800,
+                child: _buildPlayerTeamGrid(teamProvider.team),
+              ),
+
+              // Center container (Battle area)
+              Container(
+                width: centerWidth,
+                child: _buildCenterBattleArea(),
+              ),
+
+              // Right panel (Opponent team)
+              _buildSidePanel(
+                isLeft: false,
+                isExpanded: _isRightPanelExpanded,
+                isLocked: _isRightPanelLocked,
+                title: 'GYM TEAM',
+                color: Colors.red.shade800,
+                child: _buildOpponentTeamGrid(),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildScreenSizeWarning() {
+    final recommendedWidth = minimumScreenWidth.toInt();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade900,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.orange, width: 2),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.warning, color: Colors.white),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'To improve your battle experience, enlarge the screen to at least $recommendedWidth pixels wide. Current layout is optimized for larger displays.',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSidePanel({
+    required bool isLeft,
+    required bool isExpanded,
+    required bool isLocked,
+    required String title,
+    required Color color,
+    required Widget child,
+  }) {
+    final panelWidth = isExpanded || isLocked ? sidePanelExpandedWidth : sidePanelCollapsedWidth;
+
+    return MouseRegion(
+      onEnter: (_) {
+        if (!isLocked) {
+          setState(() {
+            if (isLeft) {
+              _isLeftPanelExpanded = true;
+            } else {
+              _isRightPanelExpanded = true;
+            }
+          });
+        }
+      },
+      onExit: (_) {
+        if (!isLocked) {
+          setState(() {
+            if (isLeft) {
+              _isLeftPanelExpanded = false;
+            } else {
+              _isRightPanelExpanded = false;
+            }
+          });
+        }
+      },
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            if (isLeft) {
+              _isLeftPanelLocked = !_isLeftPanelLocked;
+              if (_isLeftPanelLocked) {
+                _isLeftPanelExpanded = true;
+              }
+            } else {
+              _isRightPanelLocked = !_isRightPanelLocked;
+              if (_isRightPanelLocked) {
+                _isRightPanelExpanded = true;
+              }
+            }
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          width: panelWidth,
+          decoration: BoxDecoration(
+            color: Colors.grey.shade900,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isLocked ? Colors.orange : color,
+              width: isLocked ? 3 : 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              // Panel header
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isLocked ? Colors.orange.shade800 : color,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(7),
+                    topRight: Radius.circular(7),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    if (isExpanded || isLocked)
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      )
+                    else
+                      Icon(
+                        isLeft ? Icons.group : Icons.sports_martial_arts,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    if (isLocked)
+                      const Icon(
+                        Icons.lock,
+                        color: Colors.white,
+                        size: 14,
+                      ),
+                  ],
+                ),
+              ),
+
+              // Panel content
+              if (isExpanded || isLocked)
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: child,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCenterBattleArea() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade800,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey, width: 2),
+      ),
+      child: Column(
+        children: [
+          // Battle cards
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildBattlePokemonCard(
+                    selectedPlayerPokemon,
+                    'SELECTED',
+                    isPlayer: true,
+                    isWinner: winnerPokemon == selectedPlayerPokemon,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade800,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: const Text(
+                    'VS',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildBattlePokemonCard(
+                    currentOpponentPokemon,
+                    'OPPONENT ${currentOpponentIndex + 1}/6',
+                    isPlayer: false,
+                    isWinner: winnerPokemon == currentOpponentPokemon,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Battle button
+          if (selectedPlayerPokemon != null && !battleComplete)
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: _performBattle,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 5,
+                ),
+                icon: const Icon(Icons.flash_on, size: 24),
+                label: const Text(
+                  'BATTLE!',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }

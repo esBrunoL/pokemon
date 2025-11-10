@@ -39,6 +39,11 @@ A Flutter cross-platform mobile application that allows users to browse, search,
   - **Opponent Team Grid (2x3)**: Shows opponent's Pokemon types (not images) on the right side
 - **Sequential Tournament Battles**: Opponents battle in order (1v1, 1v2, 2v1, 2v2, 3v1, 3v2) automatically advancing when player wins
 - **Defeated Pokemon Tracking**: Pokemon that lose battles become unavailable for subsequent tournament battles with visual gray mask overlay and "DEFEATED" indicator
+- **Draw Battle Mechanics**: When both Pokemon have equal attack power, the battle results in a draw:
+  - **Both Pokemon Defeated**: In case of equal attack (e.g., both have 20 attack vs 100 HP), both Pokemon are considered defeated
+  - **Visual Indication**: Orange background with handshake icon displays "DRAW! BOTH POKÉMON DEFEATED!"
+  - **Tournament Impact**: Player's Pokemon becomes unavailable for future battles, same as a loss
+  - **Strategic Element**: Forces players to consider Pokemon with different attack values for tournament progression
 - **Team Management Integration**: "Enter a Tournament" button in My Team screen provides direct access to Gym Challenge functionality
 - **Battle Screen**: Separate Try-out battle system for individual Pokemon testing with "Keep Going" and "Try Opponent" options for continuous battles
 
@@ -138,10 +143,13 @@ A Flutter cross-platform mobile application that allows users to browse, search,
 
 ### **Advanced Battle System with Type Effectiveness** ⚔️
 - **Try Outs Battle Mechanics**: Revolutionary battle system with sophisticated damage calculations:
-  - **Attack vs HP Logic**: Winner determined by comparing effective attack against opponent's HP
-    - Player wins if: `player.attack > opponent.HP` AND `player.HP > opponent.attack`
-    - Opponent wins if: `opponent.attack > player.HP` AND `opponent.HP > player.attack`
-    - Draw if both can defeat each other
+  - **Simple Attack Comparison**: In Tournament mode, winner determined by direct attack stat comparison
+    - Player wins if: `player.attack > opponent.attack`
+    - Opponent wins if: `opponent.attack > player.attack`
+    - **Draw (Both Defeated)**: If `player.attack = opponent.attack`, both Pokemon are defeated and removed from tournament
+  - **Tournament Strategy**: Equal attack values create strategic draws where no Pokemon advances
+    - Example: Pokemon A (Attack: 50) vs Pokemon B (Attack: 50) = Both defeated
+    - Forces diverse team building with varied attack stats
   - **Type Effectiveness System**: Integrated real Pokemon type matchup data from PokeAPI
     - **Super Effective**: +50% attack bonus (1.5x multiplier) when type advantage
     - **Not Very Effective**: -30% attack reduction (0.7x multiplier) when type disadvantage
@@ -203,6 +211,57 @@ A Flutter cross-platform mobile application that allows users to browse, search,
 - **Confirmation Dialogs**: User confirmation required before removing Pokemon from team
 - **Async Battle Logic**: Non-blocking type effectiveness loading with fallback to basic calculations
 - **Accessibility**: Semantic labels for all new buttons and interactive elements
+
+### **Menu System Refactoring & Code Organization** 🔄
+- **Reusable Menu Components**: Complete refactoring to eliminate code duplication across screens:
+  - **PokedexTopMenu**: Centralized menu component with dynamic title, optional search functionality, and navigation buttons
+  - **PokedexFrameWrapper**: Unified wrapper combining red frame border with reusable top menu
+  - **Consistent Navigation**: All screens now use identical menu system with contextual button states (disabled for current screen)
+  - **Team Badge Integration**: Dynamic team size indicator works across all screens consistently
+  - **Search Integration**: Unified search functionality available where needed through `showSearch` parameter
+
+- **Code Maintainability Improvements**:
+  - **Single Source of Truth**: Menu changes now require updates in only one location
+  - **Eliminated Duplication**: Removed repetitive Scaffold+AppBar+Container structures from all screens
+  - **Consistent Styling**: All screens guaranteed to have identical menu appearance and behavior
+  - **Simplified Screen Structure**: Each screen now focuses purely on content with menu handled by wrapper
+  - **Type-Safe Parameters**: Dynamic screen titles and search functionality through well-defined widget parameters
+
+- **Screen Updates**: Refactored all major screens to use new menu system:
+  - **CardListScreen**: Uses PokedexFrameWrapper with search enabled
+  - **BattleScreen**: Completely rewritten to use new menu system, streamlined battle logic
+  - **GymScreen**: Updated tournament screen to use unified menu
+  - **MyTeamScreen**: Integrated with new reusable menu components
+  - **Main App**: Simplified entry point using new component architecture
+
+### **Responsive Tournament Layout & Advanced UI** 📱💻
+- **Revolutionary Responsive Design**: Complete redesign of gym tournament screen for optimal experience across all screen sizes:
+  - **Fixed 500px Center Container**: Battle area (selected Pokemon vs opponent + VS symbol) maintains consistent width for optimal gameplay focus
+  - **Collapsible Side Panels**: Player team (left) and gym team (right) panels automatically collapse on smaller screens to preserve battle area visibility
+  - **Intelligent Hover Expansion**: Side panels expand smoothly when hovering mouse over them, providing full team access without permanently consuming screen space
+  - **Click-to-Lock Mechanism**: Single click on any side panel locks it in expanded state, second click unlocks - perfect for touch devices and permanent team viewing
+  - **Smart Container Scaling**: When screen width falls below minimum requirements, center container scales down proportionally while maintaining usability
+
+- **Adaptive Layout Intelligence**:
+  - **Breakpoint Detection**: Automatically switches layout behavior based on available screen width (minimum 620px recommended)
+  - **Dynamic Warning System**: Displays informative banner when screen is below optimal size, suggesting exact pixel width needed for best experience
+  - **Smooth Animations**: 250ms CSS transitions for all panel expansions/contractions providing polished, professional feel
+  - **Touch-Friendly Design**: All interactive elements sized appropriately for both mouse and touch input
+  - **Visual Lock Indicators**: Orange border and lock icon clearly show when panels are locked in expanded state
+
+- **Enhanced User Experience**:
+  - **Preserved Core Functionality**: All tournament features (sequential battles, defeated Pokemon tracking, team selection) maintained in new responsive layout
+  - **Improved Mobile Experience**: Touch devices can easily access team panels without losing battle area focus
+  - **Desktop Optimization**: Larger screens benefit from efficient use of space with instant hover access to full team information
+  - **Accessibility Enhancements**: Clear visual feedback for all interactive states (collapsed, expanded, locked)
+  - **Progressive Enhancement**: Layout degrades gracefully on very small screens while maintaining core tournament functionality
+
+- **Technical Implementation**:
+  - **LayoutBuilder Integration**: Uses Flutter's LayoutBuilder for real-time screen size detection and responsive behavior
+  - **MouseRegion Hover Detection**: Precise hover state management for desktop/web platforms
+  - **GestureDetector Touch Support**: Native touch gesture support for mobile platforms  
+  - **AnimatedContainer Transitions**: Smooth, performant animations using Flutter's built-in animation system
+  - **State Management**: Separate state tracking for each panel (expanded/collapsed, locked/unlocked)
 
 ---
 

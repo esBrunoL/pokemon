@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/pokemon_card.dart';
 import '../state/team_provider.dart';
+import '../widgets/pokedex_frame_wrapper.dart';
 import 'card_detail_screen.dart';
 import 'gym_screen.dart';
 
@@ -11,21 +12,10 @@ class MyTeamScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: const Text(
-          'My Team',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: Colors.red.shade800,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: Consumer<TeamProvider>(
+    return PokedexFrameWrapper(
+      screenTitle: 'My Team',
+      showSearch: false,
+      child: Consumer<TeamProvider>(
         builder: (context, teamProvider, child) {
           if (teamProvider.isLoading) {
             return const Center(

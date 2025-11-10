@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/api_models.dart';
 import '../state/card_list_provider.dart';
 import '../widgets/card_grid_item.dart';
+import '../widgets/pokedex_frame_wrapper.dart';
 import 'card_detail_screen.dart';
 
 class CardListScreen extends StatefulWidget {
@@ -64,9 +65,10 @@ class _CardListScreenState extends State<CardListScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final crossAxisCount = _calculateCrossAxisCount(screenWidth);
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Consumer<CardListProvider>(
+    return PokedexFrameWrapper(
+      screenTitle: 'Pokédex',
+      showSearch: true,
+      child: Consumer<CardListProvider>(
         builder: (context, provider, child) {
           if (provider.loadingState == LoadingState.loading) {
             return Center(
