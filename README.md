@@ -263,6 +263,36 @@ A Flutter cross-platform mobile application that allows users to browse, search,
   - **AnimatedContainer Transitions**: Smooth, performant animations using Flutter's built-in animation system
   - **State Management**: Separate state tracking for each panel (expanded/collapsed, locked/unlocked)
 
+### **Advanced Tournament Overlay System** 🎮✨
+- **Hybrid Layout Intelligence**: Revolutionary dual-mode layout system providing optimal experience for all screen sizes:
+  - **Large Screen Mode** (≥1200px): Preserves original classic 3-column tournament layout for desktop users with ample screen space
+  - **Responsive Mode** (<1200px): Activates advanced overlay system for smaller screens and mobile devices
+  - **Automatic Detection**: Seamlessly switches between modes based on real-time screen width detection
+
+- **Dynamic Team Overlays**: Sophisticated overlay system that expands team information over the central battle area:
+  - **Center-Screen Expansion**: Teams overlay expands to cover the selected Pokemon area in the center, maximizing information visibility
+  - **Hover Activation**: Mouse hover over collapsed panels triggers smooth overlay expansion without disrupting battle flow
+  - **Touch Support**: Native touch gestures for mobile devices with same overlay functionality
+  - **Smart Positioning**: Overlays positioned precisely between collapsed side panels (60px margins) for optimal coverage
+
+- **Enhanced Team Visualization**:
+  - **Expanded Grid Layout**: Overlay displays teams in 3-column grid (vs 2-column in side panels) for better Pokemon visibility
+  - **Detailed Pokemon Cards**: Enhanced cards showing Pokemon images, Pokedex numbers, names, type badges, and status indicators
+  - **Visual Status System**: Clear visual feedback for selected Pokemon, defeated Pokemon, current opponent, and waiting opponents
+  - **Interactive Selection**: Full Pokemon selection functionality maintained in overlay view with improved visual feedback
+
+- **Professional UI/UX Design**:
+  - **Semi-Transparent Overlay**: Black background with 85% opacity preserves battle area context while highlighting team information
+  - **Color-Coded Borders**: Blue borders for player team overlay, red for opponent team overlay for instant recognition
+  - **Smooth Animations**: 250ms animated transitions for all overlay appearances/disappearances providing polished experience
+  - **Header Identification**: Clear "MY TEAM - DETAILED VIEW" and "GYM TEAM - DETAILED VIEW" headers in overlay mode
+
+- **Advanced Interaction Model**:
+  - **Non-Intrusive Activation**: Overlays only appear on hover when panels are not locked, preserving battle focus
+  - **Lock Bypass**: Locked panels (clicked to stay open) do not trigger overlays, maintaining user's preferred layout choice
+  - **Battle Flow Preservation**: All tournament mechanics (sequential battles, defeat tracking, Pokemon selection) work identically in overlay mode
+  - **Responsive Fallback**: Graceful degradation to side panels when overlays cannot be displayed
+
 ---
 
 ## 📱 Features   (All this was created by copilot, using claude sonnet 4, most of my interventions were improvements)
