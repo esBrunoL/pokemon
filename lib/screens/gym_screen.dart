@@ -22,6 +22,7 @@ class _GymScreenState extends State<GymScreen> {
   String? errorMessage;
   bool battleComplete = false;
   int currentOpponentIndex = 0;
+  Set<String> defeatedPlayerPokemonIds = {}; // Track defeated player Pokemon
 
   @override
   void initState() {
@@ -38,7 +39,7 @@ class _GymScreenState extends State<GymScreen> {
     try {
       final apiService = PokemonApiService();
       final List<PokemonCard> team = [];
-      
+
       for (int i = 0; i < 6; i++) {
         final randomId = Random().nextInt(1008) + 1;
         final pokemon = await apiService.getPokemonById(randomId.toString());
@@ -46,7 +47,7 @@ class _GymScreenState extends State<GymScreen> {
           team.add(pokemon);
         }
       }
-      
+
       setState(() {
         opponentTeam = team;
         currentOpponentPokemon = team.isNotEmpty ? team[0] : null;
@@ -61,6 +62,11 @@ class _GymScreenState extends State<GymScreen> {
   }
 
   void _selectPlayerPokemon(PokemonCard pokemon) {
+    // Prevent selecting defeated Pokemon
+    if (defeatedPlayerPokemonIds.contains(pokemon.id)) {
+      return;
+    }
+
     setState(() {
       selectedPlayerPokemon = pokemon;
       battleComplete = false;
@@ -70,15 +76,19 @@ class _GymScreenState extends State<GymScreen> {
 
   void _performBattle() {
     if (selectedPlayerPokemon != null && currentOpponentPokemon != null) {
-      final playerAttack = selectedPlayerPokemon!.stats.firstWhere(
-        (stat) => stat.name == 'attack',
-        orElse: () => const PokemonStat(name: 'attack', baseStat: 0, effort: 0),
-      ).baseStat;
-      
-      final opponentAttack = currentOpponentPokemon!.stats.firstWhere(
-        (stat) => stat.name == 'attack',
-        orElse: () => const PokemonStat(name: 'attack', baseStat: 0, effort: 0),
-      ).baseStat;
+      final playerAttack = selectedPlayerPokemon!.stats
+          .firstWhere(
+            (stat) => stat.name == 'attack',
+            orElse: () => const PokemonStat(name: 'attack', baseStat: 0, effort: 0),
+          )
+          .baseStat;
+
+      final opponentAttack = currentOpponentPokemon!.stats
+          .firstWhere(
+            (stat) => stat.name == 'attack',
+            orElse: () => const PokemonStat(name: 'attack', baseStat: 0, effort: 0),
+          )
+          .baseStat;
 
       setState(() {
         if (playerAttack > opponentAttack) {
@@ -90,6 +100,14 @@ class _GymScreenState extends State<GymScreen> {
         }
         battleComplete = true;
       });
+
+      // Handle Pokemon defeat
+      if (winnerPokemon == currentOpponentPokemon && selectedPlayerPokemon != null) {
+        // Player's Pokemon is defeated - mark it as unavailable
+        setState(() {
+          defeatedPlayerPokemonIds.add(selectedPlayerPokemon!.id);
+        });
+      }
 
       // Move to next opponent if player wins
       if (winnerPokemon == selectedPlayerPokemon) {
@@ -258,9 +276,7 @@ class _GymScreenState extends State<GymScreen> {
                                   isWinner: winnerPokemon == selectedPlayerPokemon,
                                 ),
                               ),
-                              
                               const SizedBox(width: 16),
-
                               Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
@@ -277,9 +293,7 @@ class _GymScreenState extends State<GymScreen> {
                                   ),
                                 ),
                               ),
-
                               const SizedBox(width: 16),
-
                               Expanded(
                                 child: _buildBattlePokemonCard(
                                   currentOpponentPokemon,
@@ -379,33 +393,66 @@ class _GymScreenState extends State<GymScreen> {
       itemBuilder: (context, index) {
         final pokemon = index < team.length ? team[index] : null;
         final isSelected = pokemon == selectedPlayerPokemon;
-        
+        final isDefeated = pokemon != null && defeatedPlayerPokemonIds.contains(pokemon.id);
+
         return GestureDetector(
-          onTap: pokemon != null ? () => _selectPlayerPokemon(pokemon) : null,
+          onTap: pokemon != null && !isDefeated ? () => _selectPlayerPokemon(pokemon) : null,
           child: Container(
             decoration: BoxDecoration(
-              color: pokemon != null 
+              color: pokemon != null
                   ? (isSelected ? Colors.blue.shade700 : Colors.grey.shade800)
                   : Colors.grey.shade900,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: isSelected ? Colors.blue : Colors.grey,
+                color: isSelected ? Colors.blue : (isDefeated ? Colors.red.shade600 : Colors.grey),
                 width: isSelected ? 3 : 1,
               ),
             ),
             child: pokemon != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: CachedNetworkImage(
-                      imageUrl: pokemon.imageUrl,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => const Center(
-                        child: CircularProgressIndicator(color: Colors.red),
+                ? Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: CachedNetworkImage(
+                          imageUrl: pokemon.imageUrl,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => const Center(
+                            child: CircularProgressIndicator(color: Colors.red),
+                          ),
+                          errorWidget: (context, url, error) => const Center(
+                            child: Icon(Icons.error, color: Colors.red),
+                          ),
+                        ),
                       ),
-                      errorWidget: (context, url, error) => const Center(
-                        child: Icon(Icons.error, color: Colors.red),
-                      ),
-                    ),
+                      // Gray mask for defeated Pokemon
+                      if (isDefeated)
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.7),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.close,
+                                  color: Colors.red,
+                                  size: 32,
+                                ),
+                                Text(
+                                  'DEFEATED',
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
                   )
                 : const Center(
                     child: Icon(
@@ -433,13 +480,13 @@ class _GymScreenState extends State<GymScreen> {
         final pokemon = index < opponentTeam.length ? opponentTeam[index] : null;
         final isCurrent = index == currentOpponentIndex;
         final isDefeated = index < currentOpponentIndex;
-        
+
         return Container(
           decoration: BoxDecoration(
-            color: isCurrent 
-                ? Colors.red.shade700 
-                : isDefeated 
-                    ? Colors.grey.shade700 
+            color: isCurrent
+                ? Colors.red.shade700
+                : isDefeated
+                    ? Colors.grey.shade700
                     : Colors.grey.shade800,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
@@ -458,25 +505,27 @@ class _GymScreenState extends State<GymScreen> {
                         size: 32,
                       )
                     else if (pokemon.types.isNotEmpty)
-                      ...pokemon.types.map((type) => Container(
-                        margin: const EdgeInsets.symmetric(vertical: 2),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _getTypeColor(type),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          type.toUpperCase(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      )).take(2),
+                      ...pokemon.types
+                          .map((type) => Container(
+                                margin: const EdgeInsets.symmetric(vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _getTypeColor(type),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  type.toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ))
+                          .take(2),
                     if (isCurrent)
                       const Padding(
                         padding: EdgeInsets.only(top: 4.0),
@@ -526,10 +575,12 @@ class _GymScreenState extends State<GymScreen> {
       );
     }
 
-    final attackStat = pokemon.stats.firstWhere(
-      (stat) => stat.name == 'attack',
-      orElse: () => const PokemonStat(name: 'attack', baseStat: 0, effort: 0),
-    ).baseStat;
+    final attackStat = pokemon.stats
+        .firstWhere(
+          (stat) => stat.name == 'attack',
+          orElse: () => const PokemonStat(name: 'attack', baseStat: 0, effort: 0),
+        )
+        .baseStat;
 
     Color borderColor = Colors.grey;
     if (battleComplete) {
@@ -568,7 +619,6 @@ class _GymScreenState extends State<GymScreen> {
               textAlign: TextAlign.center,
             ),
           ),
-
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(8.0),
@@ -588,7 +638,6 @@ class _GymScreenState extends State<GymScreen> {
                     ),
             ),
           ),
-
           Container(
             padding: const EdgeInsets.all(8),
             child: Column(
@@ -603,7 +652,6 @@ class _GymScreenState extends State<GymScreen> {
                     ),
                   ),
                 const SizedBox(height: 4),
-
                 Text(
                   pokemon.name.toUpperCase(),
                   style: const TextStyle(
@@ -616,7 +664,6 @@ class _GymScreenState extends State<GymScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 8),
-
                 if (pokemon.types.isNotEmpty)
                   Wrap(
                     spacing: 4,
@@ -642,9 +689,7 @@ class _GymScreenState extends State<GymScreen> {
                       );
                     }).toList(),
                   ),
-
                 const SizedBox(height: 8),
-
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,

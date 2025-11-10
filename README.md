@@ -32,6 +32,16 @@ A Flutter cross-platform mobile application that allows users to browse, search,
 
 - **Simplified Architecture**: Removed the need for API keys, environment variables, and proxy servers. PokeAPI is free, open, and doesn't require authentication.
 
+### **Tournament System & Battle Features**
+- **Gym Tournament Screen**: Implemented complete tournament-style battle system with 3-section layout:
+  - **Player Team Grid (2x3)**: Displays user's Pokemon team as clickable images on the left side
+  - **Battle Arena**: Central combat area with VS display and battle controls
+  - **Opponent Team Grid (2x3)**: Shows opponent's Pokemon types (not images) on the right side
+- **Sequential Tournament Battles**: Opponents battle in order (1v1, 1v2, 2v1, 2v2, 3v1, 3v2) automatically advancing when player wins
+- **Defeated Pokemon Tracking**: Pokemon that lose battles become unavailable for subsequent tournament battles with visual gray mask overlay and "DEFEATED" indicator
+- **Team Management Integration**: "Enter a Tournament" button in My Team screen provides direct access to Gym Challenge functionality
+- **Battle Screen**: Separate Try-out battle system for individual Pokemon testing with "Keep Going" and "Try Opponent" options for continuous battles
+
 ### **Data Model Enhancements**
 - **Enhanced Data Model**: Updated the PokemonCard model to include rich Pokémon data:
   - Individual stats (HP, Attack, Defense, Special Attack, Special Defense, Speed) with visual progress bars
@@ -196,7 +206,7 @@ A Flutter cross-platform mobile application that allows users to browse, search,
 
 ---
 
-## 📱 Features
+## 📱 Features   (All this was created by copilot, using claude sonnet 4, most of my interventions were improvements)
 
 ### Core Functionality
 - **Browse All Pokémon**: View all Pokémon ordered by National Pokédex numbers

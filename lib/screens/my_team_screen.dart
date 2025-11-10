@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/pokemon_card.dart';
 import '../state/team_provider.dart';
 import 'card_detail_screen.dart';
+import 'gym_screen.dart';
 
 class MyTeamScreen extends StatelessWidget {
   const MyTeamScreen({super.key});
@@ -48,12 +49,11 @@ class MyTeamScreen extends StatelessWidget {
                   onPressed: teamProvider.isEmpty
                       ? null
                       : () {
-                          // Tournament functionality to be implemented later
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Tournament feature coming soon!'),
-                              backgroundColor: Colors.orange,
-                              duration: Duration(seconds: 2),
+                          // Navigate to Gym Tournament
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const GymScreen(),
                             ),
                           );
                         },
